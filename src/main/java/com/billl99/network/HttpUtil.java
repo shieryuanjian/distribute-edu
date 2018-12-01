@@ -32,6 +32,8 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -134,9 +136,79 @@ public class HttpUtil {
             // 关闭连接,释放资源
             httpClient.getConnectionManager().shutdown();
         }
-
+        LOGGER.info("HTTP应答报文：" + respContent);
         return respContent;
+    }
 
+    /**
+     * POST方式提交https请求
+     * @param reqURL
+     * @param params
+     * @return
+     */
+    public static String sendPostSSLRequest(String reqURL, Map<String, String> params) {
+        LOGGER.info("HTTP请求地址：" + reqURL);
+        String responseContent = "";
+
+        //获取http连接
+        HttpClient httpClient = getClient();
+
+        try {
+            // 创建SSLSocketFactory
+            SSLSocketFactory socketFactory = getSSLSocketFactory();
+            // 通过SchemeRegistry将SSLSocketFactory注册到HttpClient上
+            httpClient.getConnectionManager().getSchemeRegistry().register(new Scheme("https", 443, socketFactory));
+            // 创建HttpPost
+            HttpPost httpPost = new HttpPost(reqURL);
+            // 构建POST请求的表单参数
+            if (null != params) {
+                List<NameValuePair> formParams = new ArrayList<NameValuePair>();
+                for (Map.Entry<String, String> entry : params.entrySet()) {
+
+                    formParams.add(new BasicNameValuePair(entry.getKey(), entry.getValue()));
+                }
+                httpPost.setEntity(new UrlEncodedFormEntity(formParams, ENCODING));
+            }
+
+            HttpResponse response = httpClient.execute(httpPost);
+            responseContent = getHttpResponseResult(response);
+        } catch (Exception e) {
+            LOGGER.error("请求通信[" + reqURL + "]时异常,堆栈轨迹如下", e);
+        } finally {
+            // 关闭连接,释放资源
+            httpClient.getConnectionManager().shutdown();
+        }
+        LOGGER.info("HTTP应答报文：" + responseContent);
+        return responseContent;
+    }
+
+    /**
+     * GET方式提交https请求
+     * @param reqURL
+     * @param encodeCharset
+     * @return
+     */
+    public static String sendGetSSLRequest(String reqURL, String encodeCharset) {
+        LOGGER.info("HTTP请求地址：" + reqURL);
+        String responseContent = "";
+
+        HttpClient httpClient = getClient();
+        try {
+            SSLSocketFactory socketFactory = getSSLSocketFactory();
+            // 通过SchemeRegistry将SSLSocketFactory注册到HttpClient上
+            httpClient.getConnectionManager().getSchemeRegistry().register(new Scheme("https", 443, socketFactory));
+            // 创建org.apache.http.client.methods.HttpGet
+            HttpGet httpGet = new HttpGet(reqURL);
+            HttpResponse response = httpClient.execute(httpGet);
+            responseContent = getHttpResponseResult(response);
+        } catch (Exception e) {
+            LOGGER.error("请求通信[" + reqURL + "]时异常,堆栈轨迹如下", e);
+        } finally {
+            // 关闭连接,释放资源
+            httpClient.getConnectionManager().shutdown();
+        }
+        LOGGER.info("HTTP应答报文：" + responseContent);
+        return responseContent;
     }
 
     /**
@@ -149,8 +221,6 @@ public class HttpUtil {
 
     private static HttpClient getClient(){
         HttpClient httpClient = new DefaultHttpClient();
-
-        // 设置代理服务器
         httpClient.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, CONNECT_TIMEOUT);
         httpClient.getParams().setParameter(CoreConnectionPNames.SO_TIMEOUT, SOCKET_TIMEOUT);
         return httpClient;
@@ -189,13 +259,13 @@ public class HttpUtil {
         return respContent;
     }
 
-    public static String sendPostSSLRequest(String reqURL, Map<String, String> params, String encodeCharset) {
-
-        String responseContent = "通信失败";
-
-        //获取http连接
-        HttpClient httpClient = getClient();
-
+    /**
+     * 创建SSLSocketFactory
+     * @return
+     * @throws NoSuchAlgorithmException
+     * @throws KeyManagementException
+     */
+    private static final SSLSocketFactory getSSLSocketFactory() throws NoSuchAlgorithmException, KeyManagementException {
         // 创建TrustManager()，用于解决javax.net.ssl.SSLPeerUnverifiedException: peer not authenticated
         X509TrustManager trustManager = new X509TrustManager() {
             public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
@@ -222,49 +292,15 @@ public class HttpUtil {
             }
         };
 
-        try {
-            // TLS1.0与SSL3.0基本上没有太大的差别,可粗略理解为TLS是SSL的继承者，但它们使用的是相同的SSLContext
-            SSLContext sslContext = SSLContext.getInstance(SSLSocketFactory.TLS);
-            // 使用TrustManager来初始化该上下文,TrustManager只是被SSL的Socket所使用
-            sslContext.init(null, new TrustManager[] { trustManager }, null);
-            // 创建SSLSocketFactory
-            SSLSocketFactory socketFactory = new SSLSocketFactory(sslContext, hostnameVerifier);
-            // 通过SchemeRegistry将SSLSocketFactory注册到HttpClient上
-            httpClient.getConnectionManager().getSchemeRegistry().register(new Scheme("https", 443, socketFactory));
-            // 创建HttpPost
-            HttpPost httpPost = new HttpPost(reqURL);
+        // TLS1.0与SSL3.0基本上没有太大的差别,可粗略理解为TLS是SSL的继承者，但它们使用的是相同的SSLContext
+        SSLContext sslContext = SSLContext.getInstance(SSLSocketFactory.TLS);
 
-            // 由于下面使用的是new
-            // UrlEncodedFormEntity(....),所以这里不需要手工指定CONTENT_TYPE为application/x-www-form-urlencoded
+        // 使用TrustManager来初始化该上下文,TrustManager只是被SSL的Socket所使用
+        sslContext.init(null, new TrustManager[] { trustManager }, null);
+        // 创建SSLSocketFactory
+        SSLSocketFactory socketFactory = new SSLSocketFactory(sslContext, hostnameVerifier);
 
-            // 因为在查看了HttpClient的源码后发现,UrlEncodedFormEntity所采用的默认CONTENT_TYPE就是application/x-www-form-urlencoded
-
-            // httpPost.setHeader(HTTP.CONTENT_TYPE,
-            // "application/x-www-form-urlencoded; charset=" + encodeCharset);
-
-            // 构建POST请求的表单参数
-            if (null != params) {
-                List<NameValuePair> formParams = new ArrayList<NameValuePair>();
-                for (Map.Entry<String, String> entry : params.entrySet()) {
-
-                    formParams.add(new BasicNameValuePair(entry.getKey(), entry.getValue()));
-                }
-                httpPost.setEntity(new UrlEncodedFormEntity(formParams, ENCODING));
-            }
-
-            HttpResponse response = httpClient.execute(httpPost);
-
-            HttpEntity entity = response.getEntity();
-            responseContent = getHttpResponseResult(response);
-        } catch (Exception e) {
-            LOGGER.error("请求通信[" + reqURL + "]时异常,堆栈轨迹如下", e);
-        } finally {
-            // 关闭连接,释放资源
-            httpClient.getConnectionManager().shutdown();
-        }
-
-        return responseContent;
-
+        return socketFactory;
     }
 
 }

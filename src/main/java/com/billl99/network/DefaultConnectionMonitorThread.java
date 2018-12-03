@@ -16,11 +16,13 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 清理过期的链接
- *
- * @author 胡磊 - lei.hu@99bill.com
- * @version 1.0 Created on 2017年6月7日 下午5:02:10
- */
+ *@Author yong.shi.nj
+ *@Description  清理过期连接
+ *@Date 18:02 2018/12/3
+ *@Param
+ *@return
+ **/
+
 public class DefaultConnectionMonitorThread extends Thread implements IConnectionMonitorThread {
 
 	private static final Logger logger = LoggerFactory.getLogger(DefaultConnectionMonitorThread.class);
@@ -34,11 +36,7 @@ public class DefaultConnectionMonitorThread extends Thread implements IConnectio
 	 */
 	private int idleTime;
 
-	/**
-	 * 
-	 * @param connMgr
-	 * @param idleTime	空闲时间  单位：秒
-	 */
+
 	public DefaultConnectionMonitorThread(HttpClientConnectionManager connMgr, int idleTime) {
 		super();
 		this.connMgr = connMgr;
@@ -49,13 +47,7 @@ public class DefaultConnectionMonitorThread extends Thread implements IConnectio
 
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * 
-	 * @see  com.billl99.network.IConnectionMonitorThread#startMonitor()
-	 * @author: 胡磊 - lei.hu@99bill.com 
-	 * @date: Created on 2017年6月7日 下午5:28:23
-	 */
+
 	public void startMonitor() {
 		this.start();
 	}

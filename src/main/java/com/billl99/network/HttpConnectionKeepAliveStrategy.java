@@ -16,12 +16,7 @@ import org.apache.http.conn.ConnectionKeepAliveStrategy;
 import org.apache.http.message.BasicHeaderElementIterator;
 import org.apache.http.protocol.HttpContext;
 
-/**
- * <p>[描述信息：说明类的基本功能]</p>
- *
- * @author 胡磊 - lei.hu@99bill.com
- * @version 1.0 Created on 2017年6月7日 下午4:47:05
- */
+
 public class HttpConnectionKeepAliveStrategy implements ConnectionKeepAliveStrategy {
 
 	/**
@@ -37,13 +32,6 @@ public class HttpConnectionKeepAliveStrategy implements ConnectionKeepAliveStrat
 		this.keepAlive = keepAlive;
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * 
-	 * @see org.apache.http.conn.ConnectionKeepAliveStrategy#getKeepAliveDuration(org.apache.http.HttpResponse, org.apache.http.protocol.HttpContext)
-	 * @author: 胡磊 - lei.hu@99bill.com 
-	 * @date: Created on 2017年6月7日 下午4:47:31
-	 */
 	public long getKeepAliveDuration(HttpResponse httpresponse, HttpContext httpcontext) {
 		HeaderElementIterator it = new BasicHeaderElementIterator(httpresponse.headerIterator("Keep-Alive"));
 		do {
